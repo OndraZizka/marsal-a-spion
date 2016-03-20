@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="windows-1250"?>
+<web-app id="WebApp_ID" version="2.4" 
+	xmlns="http://java.sun.com/xml/ns/j2ee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+
+	<display-name>Maršál a špión</display-name>
+	<description>Skvělá desková hra implementovaná v JSP a MySQL/PL.</description>
+
+	<jsp-config>
+		<taglib>
+			<taglib-uri>taglib_marsal</taglib-uri>
+			<taglib-location>/WEB-INF/taglib_marsal.tld</taglib-location>
+		</taglib>
+	</jsp-config>
+	
+	<welcome-file-list>
+		<welcome-file>index.html</welcome-file>
+		<welcome-file>index.jsp</welcome-file>
+	</welcome-file-list>
+
+</web-app>

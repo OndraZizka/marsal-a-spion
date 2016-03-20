@@ -1,0 +1,33 @@
+﻿###  Slave commands  ###
+RESET SLAVE;
+CHANGE MASTER TO
+    MASTER_HOST = '10.0.0.1',
+    MASTER_USER = 'replicator',
+    MASTER_PASSWORD = 'replicator',
+    MASTER_PORT = 3350,
+    MASTER_LOG_FILE = 'binlog.000004',
+    MASTER_LOG_POS = 98;
+START SLAVE;
+SHOW SLAVE STATUS;
+STOP SLAVE;
+
+START SLAVE SQL_THREAD;
+
+###  Master commands  ###
+RESET MASTER;
+SHOW MASTER LOGS;
+SHOW MASTER STATUS;
+SHOW SLAVE HOSTS;
+
+SHOW BINLOG EVENTS LIMIT 100;
+SHOW BINLOG EVENTS IN 'binlog.000003';
+
+INSERT INTO ms_hraci SET nick = "Kacka", pass = MD5("heslo");
+INSERT INTO ms_hraci SET nick = "Zuzka", pass = MD5("heslo");
+FLUSH TABLES;
+SELECT * FROM ms_hraci m;
+
+FLUSH TABLES WITH READ LOCK;
+UNLOCK TABLES;
+
+SHOW VARIABLES;

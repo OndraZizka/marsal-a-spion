@@ -1,0 +1,99 @@
+﻿SELECT * FROM ms_pravidla ;
+SELECT * FROM ms_bitvy ;
+  DELETE FROM ms_bitvy ;
+SELECT * FROM ms_bitvy_figurky ;
+  DELETE FROM ms_bitvy_figurky ;
+SELECT * FROM ms_hraci ;
+SELECT * FROM ms_initcounts ;
+SELECT * FROM ms_initcounts_data ;
+SELECT * FROM ms_tables_templates ;
+SELECT * FROM ms_typyfigur ;
+SELECT * FROM ms_typyfigur_vyhrava ;
+SELECT * FROM ms_typyfigur_pohyb ;
+
+
+
+/* CREATE PROCEDURE marsal.ms_bitva_vytvor (
+    _nazev CHAR(45), _hrac1 INT UNSIGNED, _hrac2 INT UNSIGNED,
+    _sada TINYINT UNSIGNED, _pravidla  TINYINT UNSIGNED,
+    _na_tahu_hrac2 BOOLEAN, _id_initcount INT UNSIGNED
+) */
+CALL ms_bitva_vytvor("Bitva", 1,NULL,  1,1,  false, 1);
+
+
+DELIMITER $$
+
+
+DROP FUNCTION ms_figura_muzepohyb$$
+CREATE FUNCTION ms_figura_muzepohyb (
+  _id_sada TINYINT UNSIGNED, _id_pravidla TINYINT UNSIGNED, _id_typ TINYINT UNSIGNED,
+  _dx INT, _dy INT, _utok BOOL, _preskok BOOL)
+RETURNS BOOLEAN
+BEGIN
+  DECLARE iNum INT;
+
+  SELECT COUNT(*) INTO iNum FROM marsal.ms_typyfigur_pohyb
+      WHERE id_sada = _id_sada AND id_pravidla = id_pravidla AND id_typ = _id_typ
+        -- AND flags = CONCAT_WS(',', IF(_utok, "utok", NULL), IF(_preskok, "preskok", NULL) )
+        AND muze_utocit = _utok AND flags = CONCAT_WS(',', IF(_preskok, "preskok", NULL) )
+        AND (x = _dx OR FIND_IN_SET('x_nek', flags))
+        AND (y = _dy OR FIND_IN_SET('y_nek', flags)) ;
+  RETURN iNum > 0;
+END $$
+
+
+
+
+DROP PROCEDURE ms_figura_tahni $$
+CREATE PROCEDURE ms_figura_tahni (_id_figurka BIGINT UNSIGNED, _dx INT, _dy INT) BEGIN
+  DECLARE bUtok, bPreskok, bPossible BOOLEAN;
+  DECLARE iIdBitva, iFigurek INT UNSIGNED;
+
+  CREATE TEMPORARY TABLE IF NOT EXISTS tFigurkyTatoHra LIKE ms_bitvy_figurky;
+  TRUNCATE tFigurkyTatoHra;
+  INSERT INTO tFigurkyTatoHra
+    SELECT * FROM ms_bitvy_figurky
+       WHERE id_bitva = (SELECT id_bitva FROM ms_bitvy_figurky WHERE id = _id_figurka);
+
+  -- Zjistime, jestli se jedna o utok
+  -- SELECT id_bitva INTO iIdBitva FROM ms_bitvy_figurky WHERE id = _id_figurka;
+  SELECT COUNT(*) INTO iFigurek FROM
+      tFigurkyTatoHra AS bf1,
+      tFigurkyTatoHra AS bf2
+    WHERE /*bf1.id = _id_figurka AND bf2.id_bitva = bf1.id_bitva
+      AND*/ bf2.x = bf1.x + _dx
+      AND   bf2.y = bf1.y + _dy
+  ;
+  SET bUtok = iFigurek > 0;
+
+
+  -- Zjistime, jestli se jedna o preskok
+  SELECT COUNT(*) INTO iFigurek FROM
+      tFigurkyTatoHra AS bf1,
+      tFigurkyTatoHra AS bf2
+    WHERE /*bf1.id = _id_figurka AND bf1.id_bitva = bf2.id_bitva AND */
+      CASE
+      WHEN _dx = 0 AND _dy = 0 THEN 0
+      WHEN _dx = 0 AND _dy != 0 THEN
+        bf2.x = bf1.x -- sloupec je stejny
+        AND bf2.y > LEAST(bf1.y, bf1.y + _dy) -- hledane figurky jsou pod horni pozici
+        AND bf2.y < GREATEST(bf1.y, bf1.y + _dy) -- hledane figurky jsou nad dolni pozici
+      WHEN _dx != 0 AND _dy = 0 THEN
+        bf2.y = bf1.y -- radka je stejna
+        AND bf2.x > LEAST(bf1.x, bf1.x + _dx) -- hledane figurky jsou za levou pozici
+        AND bf2.x < GREATEST(bf1.x, bf1.x + _dx) -- hledane figurky jsou pred pravou pozici
+      WHEN _dx = _dy AND _dx != 0 AND _dy != 0 THEN
+        ABS(bf2.y - bf1.y) = ABS(bf2.x - bf1.x)
+      ELSE 0
+      END
+  ;
+  SET bPreskok = iFigurek > 0;
+
+  -- Zjistime, jestli je takovy tah mozny
+  SET bPossible = ms_figurka_muzepohyb(1,1, (SELECT id_typ FROM ms_typyfigur WHERE id = _id), _dx, _dy, bUtok, bPreskok);
+
+
+  DROP TEMPORARY TABLE tFigurkyTatoHra;
+END $$
+
+DELIMITER ;
